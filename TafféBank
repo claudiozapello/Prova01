@@ -1,0 +1,118 @@
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvSaldo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Saldo: R$ 0.00"
+        android:textSize="24sp" />
+
+    <Spinner
+        android:id="@+id/spinnerTipo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/etValor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Valor"
+        android:inputType="numberDecimal" />
+
+    <EditText
+        android:id="@+id/etDescricao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Descrição" />
+
+    <Button
+        android:id="@+id/btnAdicionar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Adicionar Transação" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>
+
+
+class TransacaoAdapter(private val transacoes: List<Transacao>) :
+    RecyclerView.Adapter<TransacaoAdapter.TransacaoViewHolder>() {
+
+    class TransacaoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val descricao: TextView = itemView.findViewById(R.id.tvDescricao)
+        val valor: TextView = itemView.findViewById(R.id.tvValor)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransacaoViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_transacao, parent, false)
+        return TransacaoViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: TransacaoViewHolder, position: Int) {
+        val transacao = transacoes[position]
+        holder.descricao.text = transacao.descricao
+        holder.valor.text = "R$ ${transacao.valor}"
+
+        holder.valor.setTextColor(if (transacao.tipo == "Crédito") Color.GREEN else Color.RED)
+    }
+
+    override fun getItemCount() = transacoes.size
+} 
+
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: TransacaoAdapter
+    private lateinit var transacoes: MutableList<Transacao>
+    private var saldo: Double = 0.0
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val tvSaldo: TextView = findViewById(R.id.tvSaldo)
+        val spinnerTipo: Spinner = findViewById(R.id.spinnerTipo)
+        val etValor: EditText = findViewById(R.id.etValor)
+        val etDescricao: EditText = findViewById(R.id.etDescricao)
+        val btnAdicionar: Button = findViewById(R.id.btnAdicionar)
+        recyclerView = findViewById(R.id.recyclerView)
+
+        transacoes = mutableListOf()
+        adapter = TransacaoAdapter(transacoes)
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        val tipos = arrayOf("Crédito", "Débito")
+        spinnerTipo.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, tipos)
+
+        btnAdicionar.setOnClickListener {
+            val valor = etValor.text.toString().toDoubleOrNull()
+            val descricao = etDescricao.text.toString()
+            val tipo = spinnerTipo.selectedItem.toString()
+
+            if (valor != null && descricao.isNotBlank()) {
+                val transacao = Transacao(tipo, valor, descricao)
+                transacoes.add(transacao)
+                atualizarSaldo(tipo, valor)
+                adapter.notifyDataSetChanged()
+                tvSaldo.text = "Saldo: R$ ${String.format("%.2f", saldo)}"
+                etValor.text.clear()
+                etDescricao.text.clear()
+            }
+        }
+    }
+
+    private fun atualizarSaldo(tipo: String, valor: Double) {
+        saldo += if (tipo == "Crédito") valor else -valor
+    }
+}
